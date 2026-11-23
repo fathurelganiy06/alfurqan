@@ -1,0 +1,326 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Global Default-Deny Safety Net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // --- Primitive Helpers ---
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isVerifiedUser() {
+      return isSignedIn() && request.auth.token.email_verified == true;
+    }
+
+    function isAdmin() {
+      return isVerifiedUser() && (
+        request.auth.token.email == 'fathurelgani@gmail.com' ||
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid))
+      );
+    }
+
+    // --- Validation Blueprints ---
+    function isValidProfile(data) {
+      return data.keys().hasAll(['user_id', 'role', 'nama_lengkap'])
+        && data.keys().hasOnly(['user_id', 'role', 'nama_lengkap', 'avatar_url', 'student_id'])
+        && data.user_id is string && isValidId(data.user_id)
+        && data.role is string && data.role in ['admin', 'mahasiswa']
+        && data.nama_lengkap is string && data.nama_lengkap.size() >= 2 && data.nama_lengkap.size() <= 120
+        && (!('avatar_url' in data) || (data.avatar_url is string && data.avatar_url.size() <= 500))
+        && (!('student_id' in data) || (data.student_id is string && data.student_id.size() <= 128));
+    }
+
+    function isValidAdminDoc(data) {
+      return data.keys().hasAll(['email', 'nama_lengkap'])
+        && data.keys().hasOnly(['email', 'nama_lengkap'])
+        && data.email is string && data.email.size() >= 5 && data.email.size() <= 160
+        && data.nama_lengkap is string && data.nama_lengkap.size() >= 2 && data.nama_lengkap.size() <= 120;
+    }
+
+    function isValidFaculty(data) {
+      return data.keys().hasAll(['kode_fakultas', 'nama_fakultas', 'dekan', 'is_public'])
+        && data.keys().hasOnly(['kode_fakultas', 'nama_fakultas', 'dekan', 'is_public'])
+        && data.kode_fakultas is string && data.kode_fakultas.size() >= 2 && data.kode_fakultas.size() <= 20
+        && data.nama_fakultas is string && data.nama_fakultas.size() >= 3 && data.nama_fakultas.size() <= 150
+        && data.dekan is string && data.dekan.size() >= 3 && data.dekan.size() <= 150
+        && data.is_public is bool;
+    }
+
+    function isValidDepartment(data) {
+      return data.keys().hasAll(['faculty_id', 'kode_jurusan', 'nama_jurusan', 'jenjang', 'biaya_spp_default', 'is_public'])
+        && data.keys().hasOnly(['faculty_id', 'kode_jurusan', 'nama_jurusan', 'jenjang', 'biaya_spp_default', 'is_public'])
+        && data.faculty_id is string && isValidId(data.faculty_id)
+        && data.kode_jurusan is string && data.kode_jurusan.size() >= 2 && data.kode_jurusan.size() <= 20
+        && data.nama_jurusan is string && data.nama_jurusan.size() >= 3 && data.nama_jurusan.size() <= 150
+        && data.jenjang is string && data.jenjang in ['S1', 'S2', 'D3']
+        && data.biaya_spp_default is number && data.biaya_spp_default >= 0 && data.biaya_spp_default <= 100000000
+        && data.is_public is bool;
+    }
+
+    function isValidStudent(data) {
+      return data.keys().hasAll(['nim', 'nama_lengkap', 'email', 'no_hp', 'jenis_kelamin', 'alamat', 'faculty_id', 'department_id', 'angkatan', 'semester_aktif', 'status'])
+        && data.keys().hasOnly(['user_id', 'nim', 'nama_lengkap', 'email', 'no_hp', 'jenis_kelamin', 'alamat', 'faculty_id', 'department_id', 'angkatan', 'semester_aktif', 'status'])
+        && (!('user_id' in data) || (data.user_id is string && data.user_id.size() <= 128))
+        && data.nim is string && data.nim.size() >= 4 && data.nim.size() <= 30 && data.nim.matches('^[a-zA-Z0-9.\\-]+$')
+        && data.nama_lengkap is string && data.nama_lengkap.size() >= 2 && data.nama_lengkap.size() <= 120
+        && data.email is string && data.email.size() >= 3 && data.email.size() <= 160
+        && data.no_hp is string && data.no_hp.size() <= 30
+        && data.jenis_kelamin is string && data.jenis_kelamin in ['Laki-laki', 'Perempuan']
+        && data.alamat is string && data.alamat.size() <= 400
+        && data.faculty_id is string && isValidId(data.faculty_id)
+        && data.department_id is string && isValidId(data.department_id)
+        && data.angkatan is number && data.angkatan >= 2000 && data.angkatan <= 2100
+        && data.semester_aktif is number && data.semester_aktif >= 1 && data.semester_aktif <= 14
+        && data.status is string && data.status in ['Aktif', 'Cuti', 'Lulus', 'Nonaktif'];
+    }
+
+    function isValidCourse(data) {
+      return data.keys().hasAll(['department_id', 'kode_mk', 'nama_mk', 'sks', 'semester', 'dosen_pengampu', 'hari', 'jam_mulai', 'jam_selesai', 'ruangan', 'is_active'])
+        && data.keys().hasOnly(['department_id', 'kode_mk', 'nama_mk', 'sks', 'semester', 'dosen_pengampu', 'hari', 'jam_mulai', 'jam_selesai', 'ruangan', 'is_active'])
+        && data.department_id is string && isValidId(data.department_id)
+        && data.kode_mk is string && data.kode_mk.size() >= 2 && data.kode_mk.size() <= 24
+        && data.nama_mk is string && data.nama_mk.size() >= 3 && data.nama_mk.size() <= 160
+        && data.sks is number && data.sks >= 1 && data.sks <= 6
+        && data.semester is number && data.semester >= 1 && data.semester <= 8
+        && data.dosen_pengampu is string && data.dosen_pengampu.size() >= 3 && data.dosen_pengampu.size() <= 140
+        && data.hari is string && data.hari in ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu']
+        && data.jam_mulai is string && data.jam_mulai.size() == 5 && data.jam_mulai.matches('^[0-2][0-9]:[0-5][0-9]$')
+        && data.jam_selesai is string && data.jam_selesai.size() == 5 && data.jam_selesai.matches('^[0-2][0-9]:[0-5][0-9]$')
+        && data.ruangan is string && data.ruangan.size() >= 1 && data.ruangan.size() <= 60
+        && data.is_active is bool;
+    }
+
+    function isValidEnrollment(data) {
+      return data.keys().hasAll(['student_id', 'user_id', 'course_id', 'semester_diambil', 'tahun_akademik', 'created_at'])
+        && data.keys().hasOnly(['student_id', 'user_id', 'course_id', 'semester_diambil', 'tahun_akademik', 'created_at'])
+        && data.student_id is string && isValidId(data.student_id)
+        && data.user_id is string && data.user_id.size() <= 128
+        && data.course_id is string && isValidId(data.course_id)
+        && data.semester_diambil is number && data.semester_diambil >= 1 && data.semester_diambil <= 14
+        && data.tahun_akademik is string && data.tahun_akademik.size() >= 4 && data.tahun_akademik.size() <= 20
+        && data.created_at is string && data.created_at.size() >= 10 && data.created_at.size() <= 40;
+    }
+
+    function isValidBankAccount(data) {
+      return data.keys().hasAll(['nama_bank', 'nomor_rekening', 'atas_nama', 'is_active'])
+        && data.keys().hasOnly(['nama_bank', 'nomor_rekening', 'atas_nama', 'keterangan', 'is_active'])
+        && data.nama_bank is string && data.nama_bank.size() >= 2 && data.nama_bank.size() <= 100
+        && data.nomor_rekening is string && data.nomor_rekening.size() >= 5 && data.nomor_rekening.size() <= 40
+        && data.atas_nama is string && data.atas_nama.size() >= 3 && data.atas_nama.size() <= 150
+        && (!('keterangan' in data) || (data.keterangan is string && data.keterangan.size() <= 250))
+        && data.is_active is bool;
+    }
+
+    function isValidTuitionBill(data) {
+      return data.keys().hasAll(['student_id', 'user_id', 'semester', 'tahun_akademik', 'total_tagihan', 'total_terbayar', 'skema_bayar', 'status'])
+        && data.keys().hasOnly(['student_id', 'user_id', 'semester', 'tahun_akademik', 'total_tagihan', 'total_terbayar', 'skema_bayar', 'status'])
+        && data.student_id is string && isValidId(data.student_id)
+        && data.user_id is string && data.user_id.size() <= 128
+        && data.semester is number && data.semester >= 1 && data.semester <= 14
+        && data.tahun_akademik is string && data.tahun_akademik.size() >= 4 && data.tahun_akademik.size() <= 20
+        && data.total_tagihan is number && data.total_tagihan >= 0 && data.total_tagihan <= 100000000
+        && data.total_terbayar is number && data.total_terbayar >= 0 && data.total_terbayar <= 100000000
+        && data.skema_bayar is string && data.skema_bayar in ['Lunas Sekali Bayar', 'Cicilan']
+        && data.status is string && data.status in ['Belum Bayar', 'Cicilan Berjalan', 'Lunas'];
+    }
+
+    function isValidInstallment(data) {
+      return data.keys().hasAll(['tuition_bill_id', 'student_id', 'user_id', 'termin_ke', 'nominal_termin', 'tanggal_jatuh_tempo', 'status'])
+        && data.keys().hasOnly(['tuition_bill_id', 'student_id', 'user_id', 'termin_ke', 'nominal_termin', 'tanggal_jatuh_tempo', 'status'])
+        && data.tuition_bill_id is string && isValidId(data.tuition_bill_id)
+        && data.student_id is string && isValidId(data.student_id)
+        && data.user_id is string && data.user_id.size() <= 128
+        && data.termin_ke is number && data.termin_ke >= 1 && data.termin_ke <= 12
+        && data.nominal_termin is number && data.nominal_termin >= 0 && data.nominal_termin <= 100000000
+        && data.tanggal_jatuh_tempo is string && data.tanggal_jatuh_tempo.size() == 10 && data.tanggal_jatuh_tempo.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$')
+        && data.status is string && data.status in ['Belum Bayar', 'Menunggu Verifikasi', 'Lunas'];
+    }
+
+    function isValidPaymentProof(data) {
+      return data.keys().hasAll(['student_id', 'user_id', 'tuition_bill_id', 'bank_account_id', 'nominal_transfer', 'tanggal_transfer', 'file_url', 'status_verifikasi', 'created_at'])
+        && data.keys().hasOnly(['student_id', 'user_id', 'tuition_bill_id', 'installment_id', 'bank_account_id', 'nominal_transfer', 'tanggal_transfer', 'file_url', 'file_name', 'file_type', 'catatan', 'status_verifikasi', 'alasan_penolakan', 'verified_at', 'created_at'])
+        && data.student_id is string && isValidId(data.student_id)
+        && data.user_id is string && data.user_id.size() <= 128
+        && data.tuition_bill_id is string && isValidId(data.tuition_bill_id)
+        && (!('installment_id' in data) || (data.installment_id is string && data.installment_id.size() <= 128))
+        && data.bank_account_id is string && isValidId(data.bank_account_id)
+        && data.nominal_transfer is number && data.nominal_transfer > 0 && data.nominal_transfer <= 100000000
+        && data.tanggal_transfer is string && data.tanggal_transfer.size() == 10 && data.tanggal_transfer.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$')
+        && data.file_url is string && data.file_url.size() >= 1 && data.file_url.size() <= 500
+        && (!('file_name' in data) || (data.file_name is string && data.file_name.size() <= 200))
+        && (!('file_type' in data) || (data.file_type is string && data.file_type.size() <= 60))
+        && (!('catatan' in data) || (data.catatan is string && data.catatan.size() <= 400))
+        && data.status_verifikasi is string && data.status_verifikasi in ['Menunggu Verifikasi', 'Disetujui', 'Ditolak']
+        && (!('alasan_penolakan' in data) || (data.alasan_penolakan is string && data.alasan_penolakan.size() <= 400))
+        && (!('verified_at' in data) || (data.verified_at is string && data.verified_at.size() <= 40))
+        && data.created_at is string && data.created_at.size() >= 10 && data.created_at.size() <= 40;
+    }
+
+    // --- Collection Rules ---
+
+    // 1. Admins Registry
+    match /admins/{adminId} {
+      allow get: if isValidId(adminId) && (isAdmin() || (isVerifiedUser() && request.auth.uid == adminId));
+      allow list: if isAdmin();
+      allow create, update: if isValidId(adminId) && isAdmin() && isValidAdminDoc(incoming());
+      allow delete: if isValidId(adminId) && isAdmin();
+    }
+
+    // 2. Profiles (PII / Role Isolated)
+    match /profiles/{profileId} {
+      allow get: if isValidId(profileId) && (isAdmin() || (isVerifiedUser() && request.auth.uid == profileId));
+      allow list: if isAdmin() || (isVerifiedUser() && existing().user_id == request.auth.uid);
+      allow create: if isValidId(profileId) && isVerifiedUser() && isValidProfile(incoming()) && (
+        isAdmin() || (
+          request.auth.uid == profileId &&
+          incoming().user_id == request.auth.uid &&
+          incoming().role == 'mahasiswa'
+        )
+      );
+      allow update: if isValidId(profileId) && isVerifiedUser() && isValidProfile(incoming()) && (
+        isAdmin() || (
+          request.auth.uid == profileId &&
+          incoming().user_id == existing().user_id &&
+          incoming().role == existing().role &&
+          incoming().diff(existing()).affectedKeys().hasOnly(['nama_lengkap', 'avatar_url'])
+        )
+      );
+      allow delete: if isValidId(profileId) && isAdmin();
+    }
+
+    // 3. Faculties (Public Academic Catalog)
+    match /faculties/{facultyId} {
+      allow get: if isValidId(facultyId) && (isAdmin() || (isVerifiedUser() && existing().is_public == true));
+      allow list: if isAdmin() || (isVerifiedUser() && existing().is_public == true);
+      allow create, update: if isValidId(facultyId) && isAdmin() && isValidFaculty(incoming());
+      allow delete: if isValidId(facultyId) && isAdmin();
+    }
+
+    // 4. Departments (Public Academic Catalog)
+    match /departments/{departmentId} {
+      allow get: if isValidId(departmentId) && (isAdmin() || (isVerifiedUser() && existing().is_public == true));
+      allow list: if isAdmin() || (isVerifiedUser() && existing().is_public == true);
+      allow create, update: if isValidId(departmentId) && isAdmin() && isValidDepartment(incoming())
+        && exists(/databases/$(database)/documents/faculties/$(incoming().faculty_id));
+      allow delete: if isValidId(departmentId) && isAdmin();
+    }
+
+    // 5. Students (Strict PII Isolation)
+    match /students/{studentId} {
+      allow get: if isValidId(studentId) && (isAdmin() || (isVerifiedUser() && existing().user_id == request.auth.uid));
+      allow list: if isAdmin() || (isVerifiedUser() && existing().user_id == request.auth.uid);
+      allow create: if isValidId(studentId) && isAdmin() && isValidStudent(incoming())
+        && exists(/databases/$(database)/documents/faculties/$(incoming().faculty_id))
+        && exists(/databases/$(database)/documents/departments/$(incoming().department_id));
+      allow update: if isValidId(studentId) && isVerifiedUser() && isValidStudent(incoming()) && (
+        isAdmin() || (
+          existing().user_id == request.auth.uid &&
+          incoming().user_id == existing().user_id &&
+          incoming().nim == existing().nim &&
+          incoming().diff(existing()).affectedKeys().hasOnly(['no_hp', 'alamat'])
+        )
+      );
+      allow delete: if isValidId(studentId) && isAdmin();
+    }
+
+    // 6. Courses (Active Courses Readable by Students)
+    match /courses/{courseId} {
+      allow get: if isValidId(courseId) && (isAdmin() || (isVerifiedUser() && existing().is_active == true));
+      allow list: if isAdmin() || (isVerifiedUser() && existing().is_active == true);
+      allow create, update: if isValidId(courseId) && isAdmin() && isValidCourse(incoming())
+        && exists(/databases/$(database)/documents/departments/$(incoming().department_id));
+      allow delete: if isValidId(courseId) && isAdmin();
+    }
+
+    // 7. Student Enrollments (KRS)
+    match /student_enrollments/{enrollmentId} {
+      allow get: if isValidId(enrollmentId) && (isAdmin() || (isVerifiedUser() && existing().user_id == request.auth.uid));
+      allow list: if isAdmin() || (isVerifiedUser() && existing().user_id == request.auth.uid);
+      allow create: if isValidId(enrollmentId) && isVerifiedUser() && isValidEnrollment(incoming())
+        && exists(/databases/$(database)/documents/courses/$(incoming().course_id))
+        && (
+          isAdmin() || (
+            incoming().user_id == request.auth.uid &&
+            get(/databases/$(database)/documents/students/$(incoming().student_id)).data.user_id == request.auth.uid
+          )
+        );
+      allow update: if isValidId(enrollmentId) && isAdmin() && isValidEnrollment(incoming());
+      allow delete: if isValidId(enrollmentId) && (isAdmin() || (isVerifiedUser() && existing().user_id == request.auth.uid));
+    }
+
+    // 8. Bank Accounts (Active Bank Accounts Readable by Students)
+    match /bank_accounts/{bankAccountId} {
+      allow get: if isValidId(bankAccountId) && (isAdmin() || (isVerifiedUser() && existing().is_active == true));
+      allow list: if isAdmin() || (isVerifiedUser() && existing().is_active == true);
+      allow create, update: if isValidId(bankAccountId) && isAdmin() && isValidBankAccount(incoming());
+      allow delete: if isValidId(bankAccountId) && isAdmin();
+    }
+
+    // 9. Tuition Bills (SPP Bills - Admin Managed, Owner Read)
+    match /tuition_bills/{billId} {
+      allow get: if isValidId(billId) && (isAdmin() || (isVerifiedUser() && existing().user_id == request.auth.uid));
+      allow list: if isAdmin() || (isVerifiedUser() && existing().user_id == request.auth.uid);
+      allow create: if isValidId(billId) && isAdmin() && isValidTuitionBill(incoming())
+        && exists(/databases/$(database)/documents/students/$(incoming().student_id));
+      allow update: if isValidId(billId) && isAdmin() && isValidTuitionBill(incoming());
+      allow delete: if isValidId(billId) && isAdmin();
+    }
+
+    // 10. Installment Schedules (Cicilan SPP)
+    match /installment_schedules/{installmentId} {
+      allow get: if isValidId(installmentId) && (isAdmin() || (isVerifiedUser() && existing().user_id == request.auth.uid));
+      allow list: if isAdmin() || (isVerifiedUser() && existing().user_id == request.auth.uid);
+      allow create: if isValidId(installmentId) && isAdmin() && isValidInstallment(incoming())
+        && exists(/databases/$(database)/documents/tuition_bills/$(incoming().tuition_bill_id));
+      allow update: if isValidId(installmentId) && isVerifiedUser() && isValidInstallment(incoming()) && (
+        isAdmin() || (
+          existing().user_id == request.auth.uid &&
+          existing().status == 'Belum Bayar' &&
+          incoming().status == 'Menunggu Verifikasi' &&
+          incoming().tuition_bill_id == existing().tuition_bill_id &&
+          incoming().student_id == existing().student_id &&
+          incoming().user_id == existing().user_id &&
+          incoming().diff(existing()).affectedKeys().hasOnly(['status'])
+        )
+      );
+      allow delete: if isValidId(installmentId) && isAdmin();
+    }
+
+    // 11. Payment Proofs (Upload by Owner as Pending, Verified by Admin)
+    match /payment_proofs/{proofId} {
+      allow get: if isValidId(proofId) && (isAdmin() || (isVerifiedUser() && existing().user_id == request.auth.uid));
+      allow list: if isAdmin() || (isVerifiedUser() && existing().user_id == request.auth.uid);
+      allow create: if isValidId(proofId) && isVerifiedUser() && isValidPaymentProof(incoming())
+        && exists(/databases/$(database)/documents/bank_accounts/$(incoming().bank_account_id))
+        && (
+          isAdmin() || (
+            incoming().user_id == request.auth.uid &&
+            incoming().status_verifikasi == 'Menunggu Verifikasi' &&
+            (!('alasan_penolakan' in incoming()) || incoming().alasan_penolakan == '') &&
+            (!('verified_at' in incoming()) || incoming().verified_at == '') &&
+            get(/databases/$(database)/documents/tuition_bills/$(incoming().tuition_bill_id)).data.user_id == request.auth.uid &&
+            get(/databases/$(database)/documents/students/$(incoming().student_id)).data.user_id == request.auth.uid
+          )
+        );
+      allow update: if isValidId(proofId) && isAdmin() && isValidPaymentProof(incoming());
+      allow delete: if isValidId(proofId) && isAdmin();
+    }
+  }
+}

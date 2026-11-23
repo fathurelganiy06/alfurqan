@@ -1,0 +1,8 @@
+{
+  "name": "Remix SIAKAD STAI AL FURQAN Makassar",
+  "description": "Sistem Informasi Akademik, KRS, dan Manajemen Pembayaran SPP Sekolah Tinggi Agama Islam (STAI) AL FURQAN Makassar.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

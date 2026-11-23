@@ -1,0 +1,219 @@
+{
+  "entities": {
+    "Profile": {
+      "title": "Profile",
+      "description": "User profile mapping Firebase Auth UID to SIAKAD role and display info",
+      "type": "object",
+      "properties": {
+        "user_id": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "role": { "type": "string", "enum": ["admin", "mahasiswa"] },
+        "nama_lengkap": { "type": "string", "minLength": 2, "maxLength": 120 },
+        "avatar_url": { "type": "string", "maxLength": 500 },
+        "student_id": { "type": "string", "maxLength": 128 }
+      },
+      "required": ["user_id", "role", "nama_lengkap"]
+    },
+    "Admin": {
+      "title": "Admin",
+      "description": "Trusted admin role registry keyed by Firebase UID",
+      "type": "object",
+      "properties": {
+        "email": { "type": "string", "maxLength": 160 },
+        "nama_lengkap": { "type": "string", "minLength": 2, "maxLength": 120 }
+      },
+      "required": ["email", "nama_lengkap"]
+    },
+    "Faculty": {
+      "title": "Faculty",
+      "description": "Fakultas di STAI AL FURQAN Makassar",
+      "type": "object",
+      "properties": {
+        "kode_fakultas": { "type": "string", "minLength": 2, "maxLength": 20 },
+        "nama_fakultas": { "type": "string", "minLength": 3, "maxLength": 150 },
+        "dekan": { "type": "string", "minLength": 3, "maxLength": 150 },
+        "is_public": { "type": "boolean" }
+      },
+      "required": ["kode_fakultas", "nama_fakultas", "dekan", "is_public"]
+    },
+    "Department": {
+      "title": "Department",
+      "description": "Jurusan / Program Studi dengan biaya SPP default per semester",
+      "type": "object",
+      "properties": {
+        "faculty_id": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "kode_jurusan": { "type": "string", "minLength": 2, "maxLength": 20 },
+        "nama_jurusan": { "type": "string", "minLength": 3, "maxLength": 150 },
+        "jenjang": { "type": "string", "enum": ["S1", "S2", "D3"] },
+        "biaya_spp_default": { "type": "number" },
+        "is_public": { "type": "boolean" }
+      },
+      "required": ["faculty_id", "kode_jurusan", "nama_jurusan", "jenjang", "biaya_spp_default", "is_public"]
+    },
+    "Student": {
+      "title": "Student",
+      "description": "Data mahasiswa STAI AL FURQAN Makassar",
+      "type": "object",
+      "properties": {
+        "user_id": { "type": "string", "maxLength": 128 },
+        "nim": { "type": "string", "minLength": 4, "maxLength": 30, "pattern": "^[a-zA-Z0-9.\\-]+$" },
+        "nama_lengkap": { "type": "string", "minLength": 2, "maxLength": 120 },
+        "email": { "type": "string", "maxLength": 160 },
+        "no_hp": { "type": "string", "maxLength": 30 },
+        "jenis_kelamin": { "type": "string", "enum": ["Laki-laki", "Perempuan"] },
+        "alamat": { "type": "string", "maxLength": 400 },
+        "faculty_id": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "department_id": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "angkatan": { "type": "number" },
+        "semester_aktif": { "type": "number" },
+        "status": { "type": "string", "enum": ["Aktif", "Cuti", "Lulus", "Nonaktif"] }
+      },
+      "required": ["nim", "nama_lengkap", "email", "no_hp", "jenis_kelamin", "alamat", "faculty_id", "department_id", "angkatan", "semester_aktif", "status"]
+    },
+    "Course": {
+      "title": "Course",
+      "description": "Mata kuliah per jurusan dan semester",
+      "type": "object",
+      "properties": {
+        "department_id": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "kode_mk": { "type": "string", "minLength": 2, "maxLength": 24 },
+        "nama_mk": { "type": "string", "minLength": 3, "maxLength": 160 },
+        "sks": { "type": "number" },
+        "semester": { "type": "number" },
+        "dosen_pengampu": { "type": "string", "minLength": 3, "maxLength": 140 },
+        "hari": { "type": "string", "enum": ["Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu"] },
+        "jam_mulai": { "type": "string", "maxLength": 10, "pattern": "^[0-2][0-9]:[0-5][0-9]$" },
+        "jam_selesai": { "type": "string", "maxLength": 10, "pattern": "^[0-2][0-9]:[0-5][0-9]$" },
+        "ruangan": { "type": "string", "maxLength": 60 },
+        "is_active": { "type": "boolean" }
+      },
+      "required": ["department_id", "kode_mk", "nama_mk", "sks", "semester", "dosen_pengampu", "hari", "jam_mulai", "jam_selesai", "ruangan", "is_active"]
+    },
+    "StudentEnrollment": {
+      "title": "StudentEnrollment",
+      "description": "Pengambilan mata kuliah KRS mahasiswa",
+      "type": "object",
+      "properties": {
+        "student_id": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "user_id": { "type": "string", "maxLength": 128 },
+        "course_id": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "semester_diambil": { "type": "number" },
+        "tahun_akademik": { "type": "string", "maxLength": 20 },
+        "created_at": { "type": "string", "format": "date-time", "maxLength": 40 }
+      },
+      "required": ["student_id", "user_id", "course_id", "semester_diambil", "tahun_akademik", "created_at"]
+    },
+    "BankAccount": {
+      "title": "BankAccount",
+      "description": "Rekening bank resmi kampus tujuan transfer SPP",
+      "type": "object",
+      "properties": {
+        "nama_bank": { "type": "string", "minLength": 2, "maxLength": 100 },
+        "nomor_rekening": { "type": "string", "minLength": 5, "maxLength": 40 },
+        "atas_nama": { "type": "string", "minLength": 3, "maxLength": 150 },
+        "keterangan": { "type": "string", "maxLength": 250 },
+        "is_active": { "type": "boolean" }
+      },
+      "required": ["nama_bank", "nomor_rekening", "atas_nama", "is_active"]
+    },
+    "TuitionBill": {
+      "title": "TuitionBill",
+      "description": "Tagihan SPP mahasiswa per semester",
+      "type": "object",
+      "properties": {
+        "student_id": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "user_id": { "type": "string", "maxLength": 128 },
+        "semester": { "type": "number" },
+        "tahun_akademik": { "type": "string", "maxLength": 20 },
+        "total_tagihan": { "type": "number" },
+        "total_terbayar": { "type": "number" },
+        "skema_bayar": { "type": "string", "enum": ["Lunas Sekali Bayar", "Cicilan"] },
+        "status": { "type": "string", "enum": ["Belum Bayar", "Cicilan Berjalan", "Lunas"] }
+      },
+      "required": ["student_id", "user_id", "semester", "tahun_akademik", "total_tagihan", "total_terbayar", "skema_bayar", "status"]
+    },
+    "InstallmentSchedule": {
+      "title": "InstallmentSchedule",
+      "description": "Jadwal termin cicilan SPP untuk tagihan berskema Cicilan",
+      "type": "object",
+      "properties": {
+        "tuition_bill_id": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "student_id": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "user_id": { "type": "string", "maxLength": 128 },
+        "termin_ke": { "type": "number" },
+        "nominal_termin": { "type": "number" },
+        "tanggal_jatuh_tempo": { "type": "string", "maxLength": 20, "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$" },
+        "status": { "type": "string", "enum": ["Belum Bayar", "Menunggu Verifikasi", "Lunas"] }
+      },
+      "required": ["tuition_bill_id", "student_id", "user_id", "termin_ke", "nominal_termin", "tanggal_jatuh_tempo", "status"]
+    },
+    "PaymentProof": {
+      "title": "PaymentProof",
+      "description": "Bukti transfer SPP yang diunggah mahasiswa untuk diverifikasi admin",
+      "type": "object",
+      "properties": {
+        "student_id": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "user_id": { "type": "string", "maxLength": 128 },
+        "tuition_bill_id": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "installment_id": { "type": "string", "maxLength": 128 },
+        "bank_account_id": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "nominal_transfer": { "type": "number" },
+        "tanggal_transfer": { "type": "string", "maxLength": 20, "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$" },
+        "file_url": { "type": "string", "maxLength": 500 },
+        "file_name": { "type": "string", "maxLength": 200 },
+        "file_type": { "type": "string", "maxLength": 60 },
+        "catatan": { "type": "string", "maxLength": 400 },
+        "status_verifikasi": { "type": "string", "enum": ["Menunggu Verifikasi", "Disetujui", "Ditolak"] },
+        "alasan_penolakan": { "type": "string", "maxLength": 400 },
+        "verified_at": { "type": "string", "maxLength": 40 },
+        "created_at": { "type": "string", "maxLength": 40 }
+      },
+      "required": ["student_id", "user_id", "tuition_bill_id", "bank_account_id", "nominal_transfer", "tanggal_transfer", "file_url", "status_verifikasi", "created_at"]
+    }
+  },
+  "firestore": {
+    "/profiles/{profileId}": {
+      "schema": { "$ref": "#/entities/Profile" },
+      "description": "User profile & role mapping"
+    },
+    "/admins/{adminId}": {
+      "schema": { "$ref": "#/entities/Admin" },
+      "description": "Admin authorization registry"
+    },
+    "/faculties/{facultyId}": {
+      "schema": { "$ref": "#/entities/Faculty" },
+      "description": "Master fakultas"
+    },
+    "/departments/{departmentId}": {
+      "schema": { "$ref": "#/entities/Department" },
+      "description": "Master jurusan / prodi dan biaya SPP default"
+    },
+    "/students/{studentId}": {
+      "schema": { "$ref": "#/entities/Student" },
+      "description": "Data induk mahasiswa (PII terisolasi)"
+    },
+    "/courses/{courseId}": {
+      "schema": { "$ref": "#/entities/Course" },
+      "description": "Daftar mata kuliah per prodi dan semester"
+    },
+    "/student_enrollments/{enrollmentId}": {
+      "schema": { "$ref": "#/entities/StudentEnrollment" },
+      "description": "Kartu Rencana Studi (KRS) mahasiswa"
+    },
+    "/bank_accounts/{bankAccountId}": {
+      "schema": { "$ref": "#/entities/BankAccount" },
+      "description": "Rekening bank kampus resmi"
+    },
+    "/tuition_bills/{billId}": {
+      "schema": { "$ref": "#/entities/TuitionBill" },
+      "description": "Tagihan SPP per semester"
+    },
+    "/installment_schedules/{installmentId}": {
+      "schema": { "$ref": "#/entities/InstallmentSchedule" },
+      "description": "Jadwal termin pembayaran berkala (cicilan)"
+    },
+    "/payment_proofs/{proofId}": {
+      "schema": { "$ref": "#/entities/PaymentProof" },
+      "description": "Bukti pembayaran transfer mahasiswa"
+    }
+  }
+}

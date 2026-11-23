@@ -1,0 +1,94 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, monospace;
+
+  --color-campus-canvas: #F7FAF7;
+  --color-campus-sidebar: #ECF4ED;
+  --color-campus-surface: #FFFFFF;
+  --color-campus-border: #D5E4D7;
+  --color-campus-green: #146E22;
+  --color-campus-green-hover: #0F561A;
+  --color-campus-green-dark: #103A18;
+  --color-campus-gold: #C9A227;
+  --color-campus-gold-soft: #FBF5DF;
+  --color-campus-ink: #122B18;
+  --color-campus-muted: #4A6350;
+}
+
+@layer base {
+  html {
+    font-family: var(--font-sans);
+    background-color: #F7FAF7;
+    color: #122B18;
+  }
+
+  .tabular-nums {
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+/* Custom subtle scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #C5D9C8;
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #9AB89F;
+}
+
+/* Print Stylesheet with Official STAI AL FURQAN Makassar Letterhead */
+@media print {
+  @page {
+    size: A4 portrait;
+    margin: 14mm 15mm;
+  }
+
+  body {
+    background: #ffffff !important;
+    color: #000000 !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  .no-print {
+    display: none !important;
+  }
+
+  .print-only {
+    display: block !important;
+  }
+
+  .print-container {
+    box-shadow: none !important;
+    border: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+
+  table {
+    page-break-inside: auto;
+  }
+
+  tr {
+    page-break-inside: avoid;
+    page-break-after: auto;
+  }
+}
+
+.print-only {
+  display: none;
+}
